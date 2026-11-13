@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Activity, ArrowLeft, ArrowRight, BadgeCheck, Bell, ChevronDown, ChevronLeft, ChevronRight,
   Cloud, CreditCard, Database, Eye, FileText, Grid2X2, KeyRound, ListFilter, LoaderCircle, Menu, MoreVertical, Network,
-  Printer, Search, Settings, Shield, Smartphone, Users, Wifi, X,
+  Play, Printer, Search, Settings, Shield, Smartphone, Users, Wifi, X,
 } from 'lucide-react';
 
 type Page = 'credentials' | 'printers' | 'dashboard' | 'details';
@@ -42,6 +42,7 @@ export default function App() {
   const [printers, setPrinters] = useState<PrinterInfo[]>([]);
   const [credentials, setCredentials] = useState<{ id: string; name: string; kind: string }[]>([]);
   const [printer, setPrinter] = useState<PrinterInfo | null>(null);
+  const [summaryPrinter, setSummaryPrinter] = useState<PrinterInfo | null>(null);
   const [details, setDetails] = useState<Details | null>(null);
   const [search, setSearch] = useState('');
   const [pageIndex, setPageIndex] = useState(0);
@@ -102,9 +103,10 @@ export default function App() {
           {apiError && <p className="api-error">{apiError}</p>}
           <div className="table-tools"><label className="search-box"><Search size={15} /><input value={search} onChange={(e) => { setSearch(e.target.value); setPageIndex(0); }} placeholder="Search printers" aria-label="Search printers" />{search && <button onClick={() => setSearch('')} aria-label="Clear search"><X size={14} /></button>}</label></div>
           <div className="table-wrap"><table className="printer-table"><thead><tr><th>Name <ArrowRight size={13} className="sort-arrow" /></th><th>Printer Type</th><th>Device Id</th><th>Status</th><th>Cards Printed</th><th>Actions</th></tr></thead><tbody>
-            {visiblePrinters.map((item) => <tr key={item.id}><td><button className="text-link" onClick={() => openPrinter(item)}>{item.name}</button></td><td>{item.printer_type}</td><td className="mono">{item.device_id}</td><td><span className={`status-pill status-${item.status.toLowerCase()}`}><i />{item.status}</span></td><td>{item.cards_printed.toLocaleString()}</td><td><div className="row-actions"><button title="View printer" onClick={() => openPrinter(item)}><Eye size={16} /></button><button title="Edit (demo only)" onClick={() => window.alert('Editing is not enabled in this demo.')}><Settings size={15} /></button><button title="More actions" onClick={() => openPrinter(item)}><MoreVertical size={15} /></button></div></td></tr>)}
+            {visiblePrinters.map((item) => <tr key={item.id}><td><button className="text-link" onClick={() => openPrinter(item)}>{item.name}</button></td><td>{item.printer_type}</td><td className="mono">{item.device_id}</td><td><span className={`status-pill status-${item.status.toLowerCase()}`}><i />{item.status}</span></td><td>{item.cards_printed.toLocaleString()}</td><td><div className="row-actions"><button title="View summary" aria-label="View summary" onClick={() => setSummaryPrinter(item)}><Eye size={16} /></button><button title="Open printer dashboard" aria-label="Open printer dashboard" onClick={() => openPrinter(item)}><Play size={16} /></button><button title="Edit (demo only)" onClick={() => window.alert('Editing is not enabled in this demo.')}><Settings size={15} /></button><button title="More actions" onClick={() => openPrinter(item)}><MoreVertical size={15} /></button></div></td></tr>)}
             {!busy && visiblePrinters.length === 0 && <tr><td colSpan={6} className="empty-table">No printers match your search.</td></tr>}
           </tbody></table></div>
+          {summaryPrinter && <SummaryDialog printer={summaryPrinter} onClose={() => setSummaryPrinter(null)} />}
           <div className="table-footer"><span>Rows per page: <select value={pageSize} aria-label="Rows per page" onChange={() => setPageIndex(0)}><option>10</option></select></span><span>{filteredPrinters.length ? `${pageIndex * pageSize + 1}–${Math.min((pageIndex + 1) * pageSize, filteredPrinters.length)} of ${filteredPrinters.length}` : '0 results'}</span><div><button disabled={pageIndex === 0} onClick={() => setPageIndex(0)} aria-label="First page"><ChevronLeft size={16} /><ChevronLeft size={16} /></button><button disabled={pageIndex === 0} onClick={() => setPageIndex((v) => Math.max(0, v - 1))} aria-label="Previous page"><ChevronLeft size={16} /></button><button disabled={(pageIndex + 1) * pageSize >= filteredPrinters.length} onClick={() => setPageIndex((v) => v + 1)} aria-label="Next page"><ChevronRight size={16} /></button></div></div>
         </main>}
         {page === 'dashboard' && printer && <main className="content dashboard-content">
@@ -161,5 +163,18 @@ function SummaryCard({ printer, onDetails }: { printer: PrinterInfo; onDetails: 
     <div className="summary-table"><div className="summary-cell wide"><b>Printer Name</b><span>{printer.name}</span></div><div className="summary-cell"><b>Model</b><span>{printer.model}</span></div><div className="summary-cell"><b>Network</b><span className="network-icons"><Network size={16} /><Wifi size={16} /><Cloud size={17} /></span></div><div className="summary-cell"><b>Serial Number</b><span>{printer.serial_number}</span></div><div className="summary-cell"><b>Cards Printed</b><span>{printer.cards_printed.toLocaleString()}</span></div></div>
     <div className="summary-actions"><button className="secondary-button" onClick={onDetails}>DEVICE DETAILS</button></div>
   </Panel>;
+}
+function SummaryDialog({ printer, onClose }: { printer: PrinterInfo; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  const rows: Pair[] = [['Printer Name', printer.name], ['Status', printer.status], ['Model', printer.model], ['Serial Number', printer.serial_number], ['Cards Printed', printer.cards_printed.toLocaleString()]];
+  return <div className="modal-backdrop" onClick={onClose}><div className="modal" role="dialog" aria-modal="true" aria-label="Printer summary" onClick={(e) => e.stopPropagation()}>
+    <header><b>Summary</b><button aria-label="Close summary" onClick={onClose}><X size={16} /></button></header>
+    <div className="modal-body"><div className="printer-identity"><Printer size={34} /><div><span className={`state-square ${printer.status === 'Idle' ? 'green' : printer.status === 'Busy' ? 'amber' : 'red'}`} /><strong>{printer.serial_number}</strong><small>{printer.status}</small></div></div>
+      <div className="detail-rows">{rows.map(([label, value]) => <div className="detail-row" key={label}><span>{label}</span><b>{value}</b></div>)}</div></div>
+  </div></div>;
 }
 function DetailPanel({ title, rows, scroll = false }: { title: string; rows: Pair[]; scroll?: boolean }) { return <Panel title={title} className={`detail-panel ${scroll ? 'scroll-panel' : ''}`}><div className="detail-rows">{rows.map(([label, value], i) => <div className="detail-row" key={`${label}-${i}`}><span>{label}</span><b>{value}</b></div>)}</div></Panel>; }

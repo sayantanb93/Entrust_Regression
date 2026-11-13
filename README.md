@@ -1,4 +1,4 @@
-# Printer Console Demo
+# Printer Console Demo v2
 
 A standalone full-stack demo based on the provided UI references. It includes a React/TypeScript frontend and a FastAPI backend with seeded sample printer and credential data. The interface uses original generic branding and illustrations; it does not call the real identity or printer services.
 
@@ -28,3 +28,7 @@ The initial screen is a mock User ID sign-in. Enter any user ID, then proceed th
 - `GET /api/credentials`
 
 Data currently lives in in-memory demo fixtures in `backend/main.py`; restarting the API resets it. Replace those fixtures with a database only if persistence is needed.
+
+## Changes from v1
+
+In the Printers table, the eye button now opens a summary popup (name, status, model, serial number, cards printed), closed with the X, Escape, or a click outside. A new play button next to it opens the full Printer Dashboard, which is what the eye button did in v1.
